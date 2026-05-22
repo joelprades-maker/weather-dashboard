@@ -20,8 +20,9 @@
       text-align: center;
       margin-bottom: 2.5rem;
     }
-    header h1 { font-size: 1.8rem; font-weight: 700; color: #f8fafc; }
-    header p  { margin-top: .4rem; font-size: .9rem; color: #94a3b8; }
+    header h1   { font-size: 1.8rem; font-weight: 700; color: #f8fafc; }
+    header .sub { margin-top: .4rem; font-size: .9rem; color: #94a3b8; }
+    header .upd { margin-top: .25rem; font-size: .8rem; color: #64748b; }
 
     .controls {
       display: flex;
@@ -30,7 +31,7 @@
       justify-content: center;
       margin-bottom: 2rem;
     }
-    .controls select, .controls button {
+    .controls select {
       background: #1e293b;
       border: 1px solid #334155;
       color: #e2e8f0;
@@ -39,7 +40,6 @@
       font-size: .875rem;
       cursor: pointer;
     }
-    .controls button.active, .controls button:hover { background: #3b82f6; border-color: #3b82f6; }
 
     .kpi-grid {
       display: grid;
@@ -47,6 +47,10 @@
       gap: 1rem;
       max-width: 1100px;
       margin: 0 auto 2.5rem;
+    }
+    .kpi-grid.single {
+      grid-template-columns: minmax(160px, 280px);
+      justify-content: center;
     }
     .kpi {
       background: #1e293b;
@@ -56,15 +60,22 @@
       text-align: center;
     }
     .kpi .city  { font-size: .75rem; color: #94a3b8; margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .05em; }
-    .kpi .value { font-size: 1.6rem; font-weight: 700; color: #f8fafc; }
+    .kpi .value { font-size: 1.6rem; font-weight: 700; }
+    .kpi .trend { font-size: 1rem; margin-left: .3rem; font-weight: 700; }
+    .kpi .trend.up   { color: #4ade80; }
+    .kpi .trend.down { color: #f87171; }
+    .kpi .trend.flat { color: #64748b; }
     .kpi .label { font-size: .75rem; color: #64748b; margin-top: .2rem; }
 
     .charts-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+      grid-template-columns: repeat(2, 1fr);
       gap: 1.5rem;
       max-width: 1100px;
       margin: 0 auto;
+    }
+    @media (max-width: 900px) {
+      .charts-grid { grid-template-columns: 1fr; }
     }
     .chart-card {
       background: #1e293b;
@@ -72,6 +83,7 @@
       border-radius: .75rem;
       padding: 1.25rem;
     }
+    .chart-card.full-width { grid-column: 1 / -1; }
     .chart-card h2 { font-size: .9rem; font-weight: 600; color: #cbd5e1; margin-bottom: 1rem; }
     .chart-card canvas { max-height: 240px; }
 
@@ -93,7 +105,8 @@
 
 <header>
   <h1>Weather Dashboard — España</h1>
-  <p id="subtitle">Cargando datos…</p>
+  <p class="sub" id="subtitle">Cargando datos…</p>
+  <p class="upd" id="lastUpdate"></p>
 </header>
 
 <div class="controls">
@@ -121,7 +134,14 @@
 
 <script>
 const CITIES = ["Madrid","Barcelona","Valencia","Sevilla","Bilbao","Zaragoza"];
-const PALETTE = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4"];
+const PALETTE = {
+  Madrid:    "#4FC3F7",
+  Barcelona: "#81C784",
+  Valencia:  "#FFB74D",
+  Sevilla:   "#E57373",
+  Bilbao:    "#CE93D8",
+  Zaragoza:  "#4DB6AC",
+};
 
 const WMO = {
   0:"Despejado", 1:"Mayormente despejado", 2:"Parcialmente nublado", 3:"Nublado",
@@ -146,21 +166,40 @@ function getSlice(days) {
   return allData.slice(-days);
 }
 
-function buildKPIs(data, city) {
+function fmtDate(iso) {
+  // "YYYY-MM-DD" -> "DD/MM"
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
+
+function buildKPIs(city) {
   const grid = document.getElementById("kpiGrid");
   grid.innerHTML = "";
-  if (!data.length) return;
+  if (!allData.length) return;
 
-  const latest = data[data.length - 1];
+  const latest = allData[allData.length - 1];
+  const prev   = allData.length > 1 ? allData[allData.length - 2] : null;
 
-  CITIES.forEach((c, i) => {
+  const citiesToShow = city === "todas" ? CITIES : [city];
+  grid.className = "kpi-grid" + (city !== "todas" ? " single" : "");
+
+  citiesToShow.forEach(c => {
     const cd = latest.cities[c];
     if (!cd) return;
+
+    let trendHtml = "";
+    if (prev?.cities[c]) {
+      const diff = cd.temp_max - prev.cities[c].temp_max;
+      if (diff > 0)       trendHtml = `<span class="trend up">↑${diff.toFixed(1)}°</span>`;
+      else if (diff < 0)  trendHtml = `<span class="trend down">↓${Math.abs(diff).toFixed(1)}°</span>`;
+      else                trendHtml = `<span class="trend flat">→</span>`;
+    }
+
     const kpi = document.createElement("div");
     kpi.className = "kpi";
     kpi.innerHTML = `
       <div class="city">${c}</div>
-      <div class="value" style="color:${PALETTE[i]}">${cd.temp_max}° / ${cd.temp_min}°</div>
+      <div class="value" style="color:${PALETTE[c]}">${cd.temp_max}° / ${cd.temp_min}°${trendHtml}</div>
       <div class="label">${WMO[cd.weathercode] ?? "—"}</div>
       <div class="label" style="margin-top:.4rem">☔ ${cd.precipitation} mm &nbsp; 💨 ${cd.windspeed_max} km/h</div>
       <div class="label">☀️ ${cd.sunshine_hours} h sol</div>
@@ -179,103 +218,73 @@ function buildCharts(data, city) {
   const grid = document.getElementById("chartsGrid");
   grid.innerHTML = "";
 
-  const labels = data.map(e => e.date);
+  const labels = data.map(e => fmtDate(e.date));
   const citiesToPlot = city === "todas" ? CITIES : [city];
 
-  function card(id, title) {
+  function card(id, title, fullWidth = false) {
     const div = document.createElement("div");
-    div.className = "chart-card";
+    div.className = "chart-card" + (fullWidth ? " full-width" : "");
     div.innerHTML = `<h2>${title}</h2><canvas id="${id}"></canvas>`;
     grid.appendChild(div);
     return document.getElementById(id);
   }
 
+  function lineDatasets(field) {
+    return citiesToPlot.map(c => ({
+      label: c,
+      data: data.map(e => e.cities[c]?.[field] ?? null),
+      borderColor: PALETTE[c],
+      backgroundColor: "transparent",
+      borderWidth: 2.5,
+      tension: 0.3,
+      pointRadius: 3,
+    }));
+  }
+
   // Temperatura máxima
-  const c1 = card("chartTempMax", "Temperatura máxima (°C)");
-  charts.tempMax = new Chart(c1, {
+  charts.tempMax = new Chart(card("chartTempMax", "Temperatura máxima (°C)"), {
     type: "line",
-    data: {
-      labels,
-      datasets: citiesToPlot.map((c, i) => ({
-        label: c,
-        data: data.map(e => e.cities[c]?.temp_max ?? null),
-        borderColor: PALETTE[CITIES.indexOf(c)],
-        backgroundColor: "transparent",
-        tension: 0.3,
-        pointRadius: 3,
-      })),
-    },
+    data: { labels, datasets: lineDatasets("temp_max") },
     options: chartOpts("°C"),
   });
 
   // Temperatura mínima
-  const c2 = card("chartTempMin", "Temperatura mínima (°C)");
-  charts.tempMin = new Chart(c2, {
+  charts.tempMin = new Chart(card("chartTempMin", "Temperatura mínima (°C)"), {
     type: "line",
-    data: {
-      labels,
-      datasets: citiesToPlot.map((c, i) => ({
-        label: c,
-        data: data.map(e => e.cities[c]?.temp_min ?? null),
-        borderColor: PALETTE[CITIES.indexOf(c)],
-        backgroundColor: "transparent",
-        tension: 0.3,
-        pointRadius: 3,
-      })),
-    },
+    data: { labels, datasets: lineDatasets("temp_min") },
     options: chartOpts("°C"),
   });
 
-  // Precipitación
-  const c3 = card("chartPrecip", "Precipitación acumulada (mm)");
-  charts.precip = new Chart(c3, {
+  // Precipitación — barras apiladas
+  charts.precip = new Chart(card("chartPrecip", "Precipitación acumulada (mm)"), {
     type: "bar",
     data: {
       labels,
-      datasets: citiesToPlot.map((c) => ({
+      datasets: citiesToPlot.map(c => ({
         label: c,
         data: data.map(e => e.cities[c]?.precipitation ?? null),
-        backgroundColor: PALETTE[CITIES.indexOf(c)] + "bb",
+        backgroundColor: PALETTE[c] + "bb",
       })),
     },
-    options: chartOpts("mm"),
+    options: chartOpts("mm", { stacked: true }),
   });
 
   // Viento máximo
-  const c4 = card("chartWind", "Viento máximo (km/h)");
-  charts.wind = new Chart(c4, {
+  charts.wind = new Chart(card("chartWind", "Viento máximo (km/h)"), {
     type: "line",
-    data: {
-      labels,
-      datasets: citiesToPlot.map((c) => ({
-        label: c,
-        data: data.map(e => e.cities[c]?.windspeed_max ?? null),
-        borderColor: PALETTE[CITIES.indexOf(c)],
-        backgroundColor: "transparent",
-        tension: 0.3,
-        pointRadius: 3,
-      })),
-    },
+    data: { labels, datasets: lineDatasets("windspeed_max") },
     options: chartOpts("km/h"),
   });
 
-  // Horas de sol
-  const c5 = card("chartSun", "Horas de sol");
-  charts.sun = new Chart(c5, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: citiesToPlot.map((c) => ({
-        label: c,
-        data: data.map(e => e.cities[c]?.sunshine_hours ?? null),
-        backgroundColor: PALETTE[CITIES.indexOf(c)] + "bb",
-      })),
-    },
+  // Horas de sol — líneas, ancho completo
+  charts.sun = new Chart(card("chartSun", "Horas de sol", true), {
+    type: "line",
+    data: { labels, datasets: lineDatasets("sunshine_hours") },
     options: chartOpts("h"),
   });
 }
 
-function chartOpts(unit) {
+function chartOpts(unit, extra = {}) {
   return {
     responsive: true,
     interaction: { mode: "index", intersect: false },
@@ -288,8 +297,16 @@ function chartOpts(unit) {
       },
     },
     scales: {
-      x: { ticks: { color: "#64748b", maxTicksLimit: 10 }, grid: { color: "#1e293b" } },
-      y: { ticks: { color: "#64748b" }, grid: { color: "#334155" } },
+      x: {
+        stacked: extra.stacked ?? false,
+        ticks: { color: "#64748b", maxTicksLimit: 12 },
+        grid: { color: "#1e293b" },
+      },
+      y: {
+        stacked: extra.stacked ?? false,
+        ticks: { color: "#64748b" },
+        grid: { color: "#334155" },
+      },
     },
   };
 }
@@ -299,22 +316,28 @@ function render() {
   const days = parseInt(document.getElementById("daysSelect").value);
   const slice = getSlice(days);
 
-  document.getElementById("noData").style.display = slice.length ? "none" : "block";
-  document.getElementById("chartsGrid").style.display = slice.length ? "" : "none";
-  document.getElementById("kpiGrid").style.display = slice.length ? "" : "none";
+  const hasData = allData.length > 0;
+  document.getElementById("noData").style.display     = hasData ? "none"  : "block";
+  document.getElementById("chartsGrid").style.display = hasData ? ""      : "none";
+  document.getElementById("kpiGrid").style.display    = hasData ? ""      : "none";
 
-  if (!slice.length) return;
+  if (!hasData) return;
 
-  const latest = slice[slice.length - 1];
+  // Subtitle: period shown in charts
   document.getElementById("subtitle").textContent =
-    `Última actualización: ${latest.fetched_at} · ${slice.length} día${slice.length > 1 ? "s" : ""} de datos`;
+    `Mostrando ${slice.length} día${slice.length !== 1 ? "s" : ""}`;
 
-  buildKPIs(slice, city);
+  // Last update: always from the most recent entry in full dataset
+  const latest = allData[allData.length - 1];
+  document.getElementById("lastUpdate").textContent =
+    `Última actualización: ${latest.date}`;
+
+  // KPIs always use the most recent day, unaffected by period filter
+  buildKPIs(city);
   buildCharts(slice, city);
 }
 
 async function init() {
-  // Populate city selector
   const sel = document.getElementById("citySelect");
   [["todas", "Todas las ciudades"], ...CITIES.map(c => [c, c])].forEach(([v, l]) => {
     const o = document.createElement("option");
