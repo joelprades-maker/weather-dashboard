@@ -7882,5 +7882,59 @@
         "weathercode": 0
       }
     }
+  },
+  {
+    "date": "2026-09-20",
+    "fetched_at": "2026-09-20T13:00:13Z",
+    "cities": {
+      "Madrid": {
+        "temp_max": 29.9,
+        "temp_min": 16.0,
+        "precipitation": 0.0,
+        "windspeed_max": 6.8,
+        "sunshine_hours": 11.9,
+        "weathercode": 1
+      },
+      "Barcelona": {
+        "temp_max": 27.1,
+        "temp_min": 19.2,
+        "precipitation": 0.0,
+        "windspeed_max": 11.5,
+        "sunshine_hours": 11.7,
+        "weathercode": 3
+      },
+      "Valencia": {
+        "temp_max": 28.0,
+        "temp_min": 17.8,
+        "precipitation": 0.0,
+        "windspeed_max": 10.9,
+        "sunshine_hours": 12.0,
+        "weathercode": 3
+      },
+      "Sevilla": {
+        "temp_max": 34.3,
+        "temp_min": 22.4,
+        "precipitation": 0.0,
+        "windspeed_max": 16.0,
+        "sunshine_hours": 11.8,
+        "weathercode": 1
+      },
+      "Bilbao": {
+        "temp_max": 25.8,
+        "temp_min": 15.7,
+        "precipitation": 0.0,
+        "windspeed_max": 11.2,
+        "sunshine_hours": 10.9,
+        "weathercode": 1
+      },
+      "Zaragoza": {
+        "temp_max": 30.3,
+        "temp_min": 15.7,
+        "precipitation": 0.0,
+        "windspeed_max": 4.1,
+        "sunshine_hours": 12.0,
+        "weathercode": 1
+      }
+    }
   }
 ]
